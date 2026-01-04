@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UAV Acoustic Monitoring System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+      body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; background-color: #f4f7f6; margin: 0; }
+      h1 { color: #2c3e50; margin-top: 20px; }
+      #map { height: 600px; width: 90%; margin: 20px auto; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+      #data { background-color: #fff; border-radius: 10px; padding: 15px 30px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); display: inline-block; margin-bottom: 20px; }
+      .highlight { font-weight: bold; color: #e74c3c; font-size: 1.5em; }
+    </style>
+  </head>
+  <body>
+    <h1>🛡️ Acoustic UAV Monitoring System</h1>
+    <div id="data">
+      <p>Current Noise Level: <span id="noiseLevel" class="highlight">Loading...</span> dB</p>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+      // ⚠️ REPLACE WITH YOUR FIREBASE CONFIGURATION
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "your-project.firebaseapp.com",
+        databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+        projectId: "your-project-id",
+        storageBucket: "your-project.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      };
+
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
+
+      // Coordinates: Uzhhorod (Center)
+      const map = L.map("map").setView([48.6226, 22.2876], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Sensor Marker
+      let marker = L.circleMarker([48.6243, 22.2904], {
+        radius: 15,
+        color: "green",
+        fillColor: "green",
+        fillOpacity: 0.6,
+      }).addTo(map);
+
+      marker.bindPopup("Status: Waiting for data...").openPopup();
+
+      function getMarkerColor(noiseLevel) {
+        if (noiseLevel < 45) return "#2ecc71"; // Green (Quiet)
+        if (noiseLevel >= 45 && noiseLevel <= 70) return "#f1c40f"; // Yellow (Warning)
+        return "#e74c3c"; // Red (Drone Detected)
+      }
+
+      function updateNoiseLevel() {
+        database.ref("/node1/noise").once("value", (snapshot) => {
+          if (snapshot.exists()) {
+            const noiseLevel = snapshot.val();
+            document.getElementById("noiseLevel").innerText = noiseLevel.toFixed(1);
+
+            let newColor = getMarkerColor(noiseLevel);
+            marker.setStyle({ color: newColor, fillColor: newColor });
+            marker.setPopupContent(`<b>Sensor #1</b><br>Noise: ${noiseLevel} dB`).openPopup();
+          }
+        });
+      }
+
+      setInterval(updateNoiseLevel, 1000);
+    </script>
+  </body>
+</html>
